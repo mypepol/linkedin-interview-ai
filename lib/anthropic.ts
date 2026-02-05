@@ -11,39 +11,52 @@ const getAnthropicClient = () => {
     });
 };
 
-export async function generateInterviewPrep(company: CompanyData): Promise<InterviewPrepData> {
+export async function generateInterviewPrep(company: CompanyData, targetPosition?: string, cvText?: string): Promise<InterviewPrepData> {
     const anthropic = getAnthropicClient();
 
-    // We ask Claude to output strictly standard JSON.
     const systemPrompt = `
-Sen uzman bir İK danışmanısın ve kariyer koçusun. Görevin, verilen şirket verilerini analiz ederek, bu şirkette iş görüşmesine girecek bir aday için nokta atışı, stratejik ve etkileyici bir mülakat hazırlık raporu oluşturmaktır.
+Sen uzman bir kariyer koçu ve üst düzey İK danışmanısın. Görevin, aday için başvurduğu pozisyona ve (varsa) CV'sine göre kişiselleştirilmiş bir mülakat stratejisi oluşturmaktır.
 
-Çıktıyı SADECE aşağıdaki JSON formatında ver. Başka hiçbir giriş/gelişme metni ekleme. JSON valid olmalı.
+Çıktıyı SADECE aşağıdaki JSON formatında ver. Başka metin ekleme.
 
 {
-  "visionSummary": "Şirketin vizyonunu ve amacını özetleyen tek bir çarpıcı cümle.",
-  "cultureAnalysis": "Şirketin kültürünü (resmi, startup, inovatif, insan odaklı vb.) analiz eden kısa bir paragraf.",
-  "behavioralQuestions": ["Soru 1", "Soru 2", "Soru 3", "Soru 4", "Soru 5"],
-  "technicalQuestions": ["Şirketin sektörüne veya teknolojilerine özel Soru 1", "Soru 2", "Soru 3"],
-  "reverseInterviewQuestions": ["Adayın mülakatçıyı etkilemek için sorabileceği Soru 1", "Soru 2", "Soru 3"]
+  "visionSummary": "Şirket vizyonu özeti",
+  "cultureAnalysis": "Kültür analizi",
+  "roleSpecificQuestions": ["Bu pozisyon ve sektör için 5 adet teknik/stratejik soru"],
+  "behavioralQuestions": ["5 adet davranışsal soru"],
+  "keyPeople": [{"name": "Ad Soyad", "title": "Unvan"}],
+  "reverseInterviewQuestions": ["Adayın sorabileceği 3 soru"],
+  "cvAnalysis": {  // Sadece CV verildiyse doldur, yoksa null yap
+    "matchScore": 75, // 0-100 arası uyum puanı
+    "missingKeywords": ["Eksik yetenek 1", "Eksik yetenek 2"],
+    "strengths": ["Güçlü yön 1", "Güçlü yön 2"],
+    "recommendations": ["Tavsiye 1", "Tavsiye 2"]
+  }
 }
-
-Yanıtın dili Türkçe olmalıdır.
 `;
 
-    const userPrompt = `
-Şirket Bilgileri:
-Ad: ${company.name}
+    let userPrompt = `
+Şirket: ${company.name}
 Sektör: ${company.industry}
-Hakkında: ${company.description}
-Uzmanlık Alanları: ${company.specialties.join(', ')}
+Açıklama: ${company.description}
+Uzmanlıklar: ${company.specialties.join(', ')}
 Çalışan Sayısı: ${company.employeeCount}
 `;
 
+    if (targetPosition) {
+        userPrompt += `\nBaşvurulan Pozisyon: ${targetPosition}`;
+    }
+
+    if (cvText) {
+        userPrompt += `\n\nAday CV Özeti:\n${cvText.substring(0, 10000)}`;
+    } else {
+        userPrompt += `\n\n(CV verilmedi, sadece şirket ve pozisyona göre genel analiz yap)`;
+    }
+
     try {
         const msg = await anthropic.messages.create({
-            model: "claude-3-haiku-20240307", // Fallback to widely available Haiku model
-            max_tokens: 2000,
+            model: "claude-3-haiku-20240307",
+            max_tokens: 4000,
             temperature: 0.7,
             system: systemPrompt,
             messages: [
@@ -56,13 +69,8 @@ Uzmanlık Alanları: ${company.specialties.join(', ')}
             throw new Error("Unexpected response type from Claude");
         }
 
-        const jsonString = contentBlock.text;
-
-        // Sometimes models add markdown code blocks, strip them if present
-        const cleanJson = jsonString.replace(/```json/g, '').replace(/```/g, '').trim();
-
-        const result = JSON.parse(cleanJson) as InterviewPrepData;
-        return result;
+        const cleanJson = contentBlock.text.replace(/```json/g, '').replace(/```/g, '').trim();
+        return JSON.parse(cleanJson) as InterviewPrepData;
 
     } catch (error) {
         console.error("Anthropic analysis error:", error);

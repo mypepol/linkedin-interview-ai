@@ -1,42 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { scrapeLinkedInCompany } from '@/lib/apify';
 import { generateInterviewPrep } from '@/lib/anthropic';
+// @ts-ignore
+const pdf = require('pdf-parse');
 
-export const maxDuration = 60; // Set max duration for Vercel/Next.js (scraping can take time)
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
     try {
-        const body = await req.json();
-        const { url } = body;
+        const formData = await req.formData();
+        const url = formData.get('url') as string;
+        const position = formData.get('position') as string | undefined;
+        const file = formData.get('file') as File | null;
 
         if (!url || typeof url !== 'string') {
-            return NextResponse.json(
-                { error: 'Geçerli bir LinkedIn şirket URL\'si gereklidir.' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Valid LinkedIn URL required.' }, { status: 400 });
         }
 
-        if (!url.includes('linkedin.com/company/')) {
-            return NextResponse.json(
-                { error: 'Lütfen geçerli bir LinkedIn şirket profili linki girin (örn: linkedin.com/company/google).' },
-                { status: 400 }
-            );
+        let cvText = '';
+        if (file) {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const buffer = Buffer.from(arrayBuffer);
+                const data = await pdf(buffer);
+                cvText = data.text;
+            } catch (e) {
+                console.error("PDF Parsing failed", e);
+                // Continue without CV if parsing fails, but maybe warn?
+            }
         }
 
-        // Step 1: Scrape Data
-        console.log(`Analyzing: ${url}`);
+        // Step 1: Scrape
         const companyData = await scrapeLinkedInCompany(url);
 
         if (!companyData) {
-            return NextResponse.json(
-                { error: 'Şirket bulunamadı veya veriler çekilemedi. Lütfen URL\'yi kontrol edip tekrar deneyin.' },
-                { status: 404 }
-            );
+            return NextResponse.json({ error: 'Company not found.' }, { status: 404 });
         }
 
-        // Step 2: Generate Analysis
-        console.log(`Generating prep for: ${companyData.name}`);
-        const prepData = await generateInterviewPrep(companyData);
+        // Step 2: Generate Analysis (V2)
+        const prepData = await generateInterviewPrep(companyData, position, cvText);
 
         return NextResponse.json({
             company: companyData,
@@ -46,7 +48,7 @@ export async function POST(req: NextRequest) {
     } catch (error: any) {
         console.error('API Error:', error);
         return NextResponse.json(
-            { error: error.message || 'Bir hata oluştu. Lütfen daha sonra tekrar deneyin.' },
+            { error: error.message || 'Internal Server Error' },
             { status: 500 }
         );
     }

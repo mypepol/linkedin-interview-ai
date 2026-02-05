@@ -12,8 +12,16 @@ export interface CompanyData {
 export interface InterviewPrepData {
     visionSummary: string;
     cultureAnalysis: string;
+    roleSpecificQuestions: string[];
+    keyPeople: { name: string; title: string }[];
+    cvAnalysis?: {
+        matchScore: number;
+        missingKeywords: string[];
+        strengths: string[];
+        recommendations: string[];
+    };
+    // Keeping backward compatibility or general questions if needed
     behavioralQuestions: string[];
-    technicalQuestions: string[];
     reverseInterviewQuestions: string[];
 }
 
