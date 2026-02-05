@@ -42,7 +42,7 @@ Uzmanlık Alanları: ${company.specialties.join(', ')}
 
     try {
         const msg = await anthropic.messages.create({
-            model: "claude-3-5-sonnet-20241022", // Explicit ID for New Claude 3.5 Sonnet
+            model: "claude-3-haiku-20240307", // Fallback to widely available Haiku model
             max_tokens: 2000,
             temperature: 0.7,
             system: systemPrompt,
