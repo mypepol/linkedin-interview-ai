@@ -10,19 +10,25 @@ export interface CompanyData {
 }
 
 export interface InterviewPrepData {
-    visionSummary: string;
-    cultureAnalysis: string;
-    roleSpecificQuestions: string[];
-    keyPeople: { name: string; title: string }[];
-    cvAnalysis?: {
-        matchScore: number;
-        missingKeywords: string[];
-        strengths: string[];
-        recommendations: string[];
-    };
-    // Keeping backward compatibility or general questions if needed
-    behavioralQuestions: string[];
-    reverseInterviewQuestions: string[];
+    companyCulture: string;
+    generalQuestions: string[];
+    executiveTeam: {
+        name: string;
+        title: string;
+        predictedEmail?: string;
+        linkedin?: string;
+    }[];
+    cvMatchScore: number;
+    cvDeepDive: {
+        trigger: string;
+        question: string;
+        starAnswer: string;
+    }[];
+    // Legacy fields for backward compatibility if needed, but prefer V3 structure
+    visionSummary?: string;
+    cultureAnalysis?: string;
+    roleSpecificQuestions?: string[];
+    reverseInterviewQuestions?: string[];
 }
 
 export interface AnalysisResult {

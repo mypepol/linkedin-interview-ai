@@ -58,3 +58,38 @@ export async function scrapeLinkedInCompany(url: string): Promise<CompanyData | 
         throw error;
     }
 }
+
+export async function searchExecutives(companyName: string): Promise<any[]> {
+    try {
+        const client = getApifyClient();
+        console.log(`Searching executives for: ${companyName}`);
+
+        // Google Search Query: "Company Name" (CEO OR CTO OR "Head of HR" OR "VP of Engineering") linkedIn
+        const query = `site:linkedin.com/in/ "${companyName}" (CEO OR CTO OR "Head of HR" OR "Talent Acquisition")`;
+
+        const runInput = {
+            queries: [query],
+            resultsPerPage: 10,
+            maxPagesPerQuery: 1,
+        };
+
+        // Run Google Search Scraper (apify/google-search-scraper)
+        const run = await client.actor("apify/google-search-scraper").call(runInput);
+
+        console.log("Google Search finished, fetching results...");
+        const { items } = await client.dataset(run.defaultDatasetId).listItems();
+
+        if (!items || items.length === 0) return [];
+
+        // Return simplified results
+        return items.map((item: any) => ({
+            title: item.title,
+            link: item.url,
+            snippet: item.description
+        }));
+
+    } catch (error) {
+        console.error("Executive search error:", error);
+        return []; // Return empty on error to not block flow
+    }
+}

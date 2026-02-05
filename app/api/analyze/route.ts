@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { scrapeLinkedInCompany } from '@/lib/apify';
-import { generateInterviewPrep } from '@/lib/anthropic';
+import { scrapeLinkedInCompany, searchExecutives } from '@/lib/apify';
+import { generateMasterAnalysis } from '@/lib/anthropic';
 // @ts-ignore
 const pdf = require('pdf-parse');
 
@@ -26,19 +26,34 @@ export async function POST(req: NextRequest) {
                 cvText = data.text;
             } catch (e) {
                 console.error("PDF Parsing failed", e);
-                // Continue without CV if parsing fails, but maybe warn?
             }
         }
 
-        // Step 1: Scrape
-        const companyData = await scrapeLinkedInCompany(url);
+        // Parallel Step 1: Scrape Company & Search Executives
+        const companyPromise = scrapeLinkedInCompany(url);
+
+        // Use a temp company name derived from URL for initial search or wait for scraper? 
+        // Better: Wait for scraper to get exact name, OR use URL slug.
+        // Let's scrape first to get the accurate company name for Google Search.
+        console.log("Step 1: Scraping Company...");
+        const companyData = await companyPromise;
 
         if (!companyData) {
             return NextResponse.json({ error: 'Company not found.' }, { status: 404 });
         }
 
-        // Step 2: Generate Analysis (V2)
-        const prepData = await generateInterviewPrep(companyData, position, cvText);
+        // Step 2: Search Executives (using company name)
+        let executivesRaw = [];
+        try {
+            console.log("Step 2: Searching Executives for", companyData.name);
+            executivesRaw = await searchExecutives(companyData.name);
+        } catch (e) {
+            console.warn("Executive search failed, proceeding without it.", e);
+        }
+
+        // Step 3: Generate Master Analysis (V3)
+        console.log("Step 3: Generating Master Analysis...");
+        const prepData = await generateMasterAnalysis(companyData, position, cvText, executivesRaw);
 
         return NextResponse.json({
             company: companyData,

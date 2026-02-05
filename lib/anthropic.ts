@@ -11,53 +11,67 @@ const getAnthropicClient = () => {
     });
 };
 
-export async function generateInterviewPrep(company: CompanyData, targetPosition?: string, cvText?: string): Promise<InterviewPrepData> {
+export async function generateMasterAnalysis(
+    company: CompanyData,
+    targetPosition?: string,
+    cvText?: string,
+    executiveSearchResults?: any[]
+): Promise<InterviewPrepData> {
     const anthropic = getAnthropicClient();
 
     const systemPrompt = `
-Sen uzman bir kariyer koçu ve üst düzey İK danışmanısın. Görevin, aday için başvurduğu pozisyona ve (varsa) CV'sine göre kişiselleştirilmiş bir mülakat stratejisi oluşturmaktır.
+Sen Dünyanın En İyi Kariyer Koçu ve Yönetici İşe Alım Uzmanısın.
+Görevin, aşağıdaki verileri birleştirerek adaya "Mülakatı Kazandıran" stratejik bir rapor hazırlamaktır.
 
-Çıktıyı SADECE aşağıdaki JSON formatında ver. Başka metin ekleme.
+ELDELİ VERİLER:
+1. Şirket Profili (Sektör, Vizyon, Çalışanlar)
+2. Adayın Başvurduğu Pozisyon
+3. Adayın CV Özeti
+4. Google/LinkedIn aramasından gelen "Yönetici Adayları" (Ham veri)
 
+YAPMAN GEREKENLER:
+1. **Yönetici Analizi:** Google sonuçlarından CEO, CTO, Head of HR gibi kilit isimleri ayıkla. Eğer isimden tahmin edebiliyorsan şirket domainine (örn: @google.com) uygun email tahmin et.
+2. **Derin CV Analizi:** CV'deki spesifik bir cümleyi "Trigger" olarak al ve buna istinaden gelebilecek zor bir soru üret. Ardından buna STAR (Situation, Task, Action, Result) tekniğiyle ideal bir cevap yaz.
+3. **Kültür & Strateji:** Şirketin "About" metninden yola çıkarak iç kültürünü analiz et.
+
+ÇIKTI FORMATI (SADECE JSON):
 {
-  "visionSummary": "Şirket vizyonu özeti",
-  "cultureAnalysis": "Kültür analizi",
-  "roleSpecificQuestions": ["Bu pozisyon ve sektör için 5 adet teknik/stratejik soru"],
-  "behavioralQuestions": ["5 adet davranışsal soru"],
-  "keyPeople": [{"name": "Ad Soyad", "title": "Unvan"}],
-  "reverseInterviewQuestions": ["Adayın sorabileceği 3 soru"],
-  "cvAnalysis": {  // Sadece CV verildiyse doldur, yoksa null yap
-    "matchScore": 75, // 0-100 arası uyum puanı
-    "missingKeywords": ["Eksik yetenek 1", "Eksik yetenek 2"],
-    "strengths": ["Güçlü yön 1", "Güçlü yön 2"],
-    "recommendations": ["Tavsiye 1", "Tavsiye 2"]
-  }
+  "companyCulture": "Şirketin ruhunu anlatan 1-2 cümle. Örn: 'Hızlı büyüyen, inisiyatif almayı seven...'",
+  "generalQuestions": ["Genel kültür/davranış sorusu 1", "Soru 2", "Soru 3"],
+  "executiveTeam": [
+    { "name": "Ad Soyad", "title": "Unvan", "predictedEmail": "tahmini@sirket.com (opsiyonel)", "linkedin": "LinkedIn URL (varsa)" }
+  ],
+  "cvMatchScore": 85, // 0-100
+  "cvDeepDive": [
+     {
+       "trigger": "CV'nizde geçen 'X projesinde %50 verim artışı' ifadesi...",
+       "question": "Bu projede karşılaştığınız en büyük teknik engel neydi ve nasıl aştınız?",
+       "starAnswer": "Situation: X projesinde... Task: Verimi artırmam gerekiyordu... Action: Şu teknolojiyi kullandım... Result: %50 artış sağlandı."
+     },
+     { "trigger": "...", "question": "...", "starAnswer": "..." } // En az 3 adet
+  ]
 }
 `;
 
     let userPrompt = `
-Şirket: ${company.name}
-Sektör: ${company.industry}
-Açıklama: ${company.description}
-Uzmanlıklar: ${company.specialties.join(', ')}
-Çalışan Sayısı: ${company.employeeCount}
+ŞİRKET: ${company.name}
+SEKTÖR: ${company.industry}
+AÇIKLAMA: ${company.description}
+
+POZİSYON: ${targetPosition || "Belirtilmedi"}
+
+HAM YÖNETİCİ ARAMA SONUÇLARI (Buradan anlamlı isimleri çıkar):
+${JSON.stringify(executiveSearchResults || []).substring(0, 3000)}
+
+ADAY CV (ÖZET):
+${cvText ? cvText.substring(0, 15000) : "CV Yok"}
 `;
-
-    if (targetPosition) {
-        userPrompt += `\nBaşvurulan Pozisyon: ${targetPosition}`;
-    }
-
-    if (cvText) {
-        userPrompt += `\n\nAday CV Özeti:\n${cvText.substring(0, 10000)}`;
-    } else {
-        userPrompt += `\n\n(CV verilmedi, sadece şirket ve pozisyona göre genel analiz yap)`;
-    }
 
     try {
         const msg = await anthropic.messages.create({
             model: "claude-3-haiku-20240307",
             max_tokens: 4000,
-            temperature: 0.7,
+            temperature: 0.5,
             system: systemPrompt,
             messages: [
                 { role: "user", content: userPrompt }
@@ -73,7 +87,7 @@ Uzmanlıklar: ${company.specialties.join(', ')}
         return JSON.parse(cleanJson) as InterviewPrepData;
 
     } catch (error) {
-        console.error("Anthropic analysis error:", error);
+        console.error("Master Analysis Error:", error);
         throw error;
     }
 }

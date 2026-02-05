@@ -5,11 +5,9 @@ import { AnalysisResult } from '@/types';
 import { CompanyCard } from '@/components/company-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Download, CheckCircle, AlertTriangle, Lightbulb, Users, Target, HelpCircle } from 'lucide-react';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { Download, CheckCircle, AlertTriangle, Lightbulb, Users, Target, HelpCircle, User, Briefcase, Mail } from 'lucide-react';
+import { useReactToPrint } from 'react-to-print';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 
 interface DashboardViewProps {
@@ -17,223 +15,208 @@ interface DashboardViewProps {
 }
 
 export function DashboardView({ data }: DashboardViewProps) {
-    const reportRef = useRef<HTMLDivElement>(null);
+    const printRef = useRef<HTMLDivElement>(null);
 
-    const handleDownloadPdf = async () => {
-        if (!reportRef.current) return;
-        const canvas = await html2canvas(reportRef.current, { scale: 2 });
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-        pdf.save(`${data.company.name}-interview-prep.pdf`);
-    };
+    const handlePrint = useReactToPrint({
+        contentRef: printRef,
+        documentTitle: `${data.company.name}-Analiz-Raporu`,
+    });
 
     const { company, prep } = data;
 
     return (
-        <div className="w-full max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center">
-                <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                    Kariyer Analiz Raporu
-                </h2>
-                <Button onClick={handleDownloadPdf} variant="outline" className="border-blue-200 hover:bg-blue-50 text-blue-700">
+        <div className="w-full max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
+            {/* Header / Actions */}
+            <div className="flex justify-between items-center bg-white p-4 rounded-xl border shadow-sm">
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-900">Sonuç Paneli</h2>
+                    <p className="text-sm text-muted-foreground">{company.name} Analizi Hazır</p>
+                </div>
+                <Button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700 text-white">
                     <Download className="w-4 h-4 mr-2" />
-                    PDF İndir
+                    PDF Rapor İndir
                 </Button>
             </div>
 
-            {/* Bu kısım PDF'e basılacak */}
-            <div ref={reportRef} className="space-y-6 bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+            {/* Interactive Dashboard Tabs */}
+            <Tabs defaultValue="overview" className="w-full">
+                <TabsList className="grid w-full grid-cols-4 bg-white p-1 border rounded-lg h-12">
+                    <TabsTrigger value="overview">🔍 Genel Bakış</TabsTrigger>
+                    <TabsTrigger value="consultant">🤖 Mülakat Simülasyonu</TabsTrigger>
+                    <TabsTrigger value="executives">👥 Yönetim Ekibi</TabsTrigger>
+                    <TabsTrigger value="cv">📄 CV Analizi</TabsTrigger>
+                </TabsList>
 
-                <CompanyCard company={company} />
-
-                <Tabs defaultValue="interview" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 mb-6 bg-slate-100/50 p-1">
-                        <TabsTrigger value="interview" className="text-base">🎯 Mülakat Soruları</TabsTrigger>
-                        <TabsTrigger value="cv" className="text-base">📄 CV Analizi</TabsTrigger>
-                        <TabsTrigger value="company" className="text-base">🏢 Şirket İstihbaratı</TabsTrigger>
-                    </TabsList>
-
-                    {/* MÜLAKAT SORULARI TABI */}
-                    <TabsContent value="interview" className="space-y-4">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-xl flex items-center gap-2">
-                                    <Target className="text-blue-600" />
-                                    Rol Bazlı & Stratejik Sorular
-                                </CardTitle>
-                                <CardDescription>Bu pozisyon için size yöneltilebilecek en olası sorular.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <Accordion type="single" collapsible className="w-full">
-                                    {prep.roleSpecificQuestions?.map((q, i) => (
-                                        <AccordionItem key={`role-${i}`} value={`role-${i}`}>
-                                            <AccordionTrigger className="text-left font-medium text-slate-800 hover:text-blue-600">
-                                                {i + 1}. {q}
-                                            </AccordionTrigger>
-                                            <AccordionContent className="text-muted-foreground italic bg-slate-50 p-3 rounded">
-                                                İpucu: Bu soruyu cevaplarken geçmiş projelerinizdeki somut başarılarınızdan (STAR tekniği) örnek veriniz.
-                                            </AccordionContent>
-                                        </AccordionItem>
-                                    ))}
-                                </Accordion>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-xl flex items-center gap-2">
-                                    <HelpCircle className="text-indigo-600" />
-                                    Tersine Mülakat (Sizin Soracaklarınız)
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <ul className="space-y-3">
-                                    {prep.reverseInterviewQuestions?.map((q, i) => (
-                                        <li key={i} className="flex gap-3 text-slate-700">
-                                            <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">
-                                                {i + 1}
-                                            </span>
-                                            {q}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-
-                    {/* CV ANALİZİ TABI */}
-                    <TabsContent value="cv" className="space-y-6">
-                        {prep.cvAnalysis ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Skor Kartı */}
-                                <Card className="md:col-span-2 bg-gradient-to-br from-slate-900 to-slate-800 text-white border-none">
-                                    <CardHeader>
-                                        <CardTitle className="text-center text-xl text-slate-200">Pozisyon Uyumluluk Skoru</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="flex flex-col items-center justify-center pb-8">
-                                        <div className="relative w-32 h-32 flex items-center justify-center">
-                                            <svg className="w-full h-full" viewBox="0 0 100 100">
-                                                <circle className="text-slate-700 stroke-current" strokeWidth="10" cx="50" cy="50" r="40" fill="transparent"></circle>
-                                                <circle className="text-green-500 progress-ring__circle stroke-current" strokeWidth="10" strokeLinecap="round" cx="50" cy="50" r="40" fill="transparent" strokeDasharray="251.2" strokeDashoffset={251.2 - (251.2 * prep.cvAnalysis.matchScore) / 100} style={{ transition: 'stroke-dashoffset 1s ease-in-out' }}></circle>
-                                            </svg>
-                                            <span className="absolute text-3xl font-bold">{prep.cvAnalysis.matchScore}%</span>
-                                        </div>
-                                        <p className="text-slate-400 mt-2 text-sm italic">
-                                            {prep.cvAnalysis.matchScore > 80 ? "Harika bir eşleşme! 🚀" : prep.cvAnalysis.matchScore > 50 ? "Güçlü bir profil ama iyileştirmeler gerek. 🛠️" : "Bazı kritik yetkinlikler eksik görünüyor. 📉"}
-                                        </p>
-                                    </CardContent>
-                                </Card>
-
-                                <Card className="border-green-100 bg-green-50/50">
-                                    <CardHeader>
-                                        <CardTitle className="text-green-700 flex items-center gap-2 text-lg">
-                                            <CheckCircle className="w-5 h-5" />
-                                            Güçlü Yönleriniz
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <ul className="list-disc pl-5 space-y-2 text-slate-700">
-                                            {prep.cvAnalysis.strengths?.map((s, i) => <li key={i}>{s}</li>)}
-                                        </ul>
-                                    </CardContent>
-                                </Card>
-
-                                <Card className="border-amber-100 bg-amber-50/50">
-                                    <CardHeader>
-                                        <CardTitle className="text-amber-700 flex items-center gap-2 text-lg">
-                                            <AlertTriangle className="w-5 h-5" />
-                                            Gelişim Alanları
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <ul className="list-disc pl-5 space-y-2 text-slate-700">
-                                            {prep.cvAnalysis.missingKeywords?.map((s, i) => <li key={i}>{s}</li>)}
-                                        </ul>
-                                    </CardContent>
-                                </Card>
-
-                                <Card className="md:col-span-2 border-blue-100 bg-blue-50/30">
-                                    <CardHeader>
-                                        <CardTitle className="text-blue-700 flex items-center gap-2 text-lg">
-                                            <Lightbulb className="w-5 h-5" />
-                                            Kariyer Koçu Tavsiyeleri
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <ul className="space-y-3">
-                                            {prep.cvAnalysis.recommendations?.map((r, i) => (
-                                                <li key={i} className="flex gap-3 text-slate-700 bg-white p-3 rounded border border-blue-100 shadow-sm">
-                                                    <span className="font-bold text-blue-500">#{i + 1}</span>
-                                                    {r}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </CardContent>
-                                </Card>
+                {/* TAB 1: OVERVIEW */}
+                <TabsContent value="overview" className="space-y-6 mt-6">
+                    <CompanyCard company={company} />
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-xl">Şirket Kültürü & DNA</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="bg-slate-50 p-6 rounded-lg border-l-4 border-blue-500 italic text-lg text-slate-700 leading-relaxed">
+                                &quot;{prep.companyCulture}&quot;
                             </div>
-                        ) : (
-                            <div className="text-center py-12 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
-                                <p className="text-muted-foreground">CV yüklemediğiniz için bu analiz görüntülenemiyor.</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Genel Kurumsal Sorular</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <ul className="space-y-3">
+                                {prep.generalQuestions?.map((q, i) => (
+                                    <li key={i} className="flex gap-3 text-slate-700">
+                                        <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-slate-200 text-slate-700 text-xs font-bold">{i + 1}</span>
+                                        {q}
+                                    </li>
+                                ))}
+                            </ul>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                {/* TAB 2: SIMULATION */}
+                <TabsContent value="consultant" className="space-y-6 mt-6">
+                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-8 text-white shadow-lg">
+                        <h3 className="text-2xl font-bold mb-2">🔥 STAR Tekniği Simülasyonu</h3>
+                        <p className="text-indigo-100">
+                            CV'nizdeki deneyimlere dayanarak size yöneltilecek zorlayıcı sorular ve <span className="font-bold bg-white/20 px-1 rounded">Mükemmel Cevap</span> taslakları.
+                        </p>
+                    </div>
+
+                    <div className="grid gap-4">
+                        {prep.cvDeepDive?.map((item, i) => (
+                            <Card key={i} className="border-l-4 border-indigo-500">
+                                <CardHeader>
+                                    <div className="text-xs font-bold text-indigo-500 uppercase tracking-wide mb-1">Tespit Edilen CV Detayı</div>
+                                    <CardDescription className="font-medium text-slate-900 border-b pb-2 italic">
+                                        &quot;{item.trigger}&quot;
+                                    </CardDescription>
+                                    <CardTitle className="text-lg pt-2 flex items-start gap-2">
+                                        <HelpCircle className="w-5 h-5 text-red-500 mt-1" />
+                                        {item.question}
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                                        <div className="flex items-center gap-2 font-bold text-green-800 mb-2">
+                                            <CheckCircle className="w-4 h-4" />
+                                            Önerilen STAR Cevabı
+                                        </div>
+                                        <p className="text-slate-700 text-sm whitespace-pre-wrap leading-relaxed">
+                                            {item.starAnswer}
+                                        </p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </TabsContent>
+
+                {/* TAB 3: EXECUTIVES */}
+                <TabsContent value="executives" className="mt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {prep.executiveTeam?.map((exec, i) => (
+                            <Card key={i} className="hover:shadow-md transition-shadow">
+                                <CardHeader className="flex flex-row items-center gap-4 pb-2">
+                                    <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-xl font-bold text-slate-500">
+                                        {exec.name.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <CardTitle className="text-base">{exec.name}</CardTitle>
+                                        <CardDescription>{exec.title}</CardDescription>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="pt-2 space-y-2 text-sm">
+                                    {exec.predictedEmail && (
+                                        <div className="flex items-center gap-2 text-slate-600 bg-slate-50 p-2 rounded">
+                                            <Mail className="w-3 h-3" />
+                                            {exec.predictedEmail}
+                                        </div>
+                                    )}
+                                    {exec.linkedin && (
+                                        <a href={exec.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-600 hover:underline">
+                                            <User className="w-3 h-3" />
+                                            LinkedIn Profili
+                                        </a>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        ))}
+                        {(!prep.executiveTeam || prep.executiveTeam.length === 0) && (
+                            <div className="col-span-full text-center py-12 text-slate-500">
+                                Yönetici bilgisi bulunamadı.
                             </div>
                         )}
-                    </TabsContent>
+                    </div>
+                </TabsContent>
 
-                    {/* ŞİRKET İSTİHBARATI TABI */}
-                    <TabsContent value="company" className="space-y-4">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-xl">Vizyon & Kültür</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div>
-                                    <h4 className="font-semibold text-sm text-slate-500 uppercase mb-1">Vizyon Özeti</h4>
-                                    <p className="text-lg font-medium text-slate-800 leading-relaxed">
-                                        &quot;{prep.visionSummary}&quot;
-                                    </p>
-                                </div>
-                                <div>
-                                    <h4 className="font-semibold text-sm text-slate-500 uppercase mb-1">Kültür Analizi</h4>
-                                    <p className="text-slate-600">
-                                        {prep.cultureAnalysis}
-                                    </p>
-                                </div>
-                            </CardContent>
-                        </Card>
+                {/* TAB 4: CV STATS */}
+                <TabsContent value="cv" className="mt-6">
+                    <div className="grid place-items-center py-12">
+                        <div className="relative w-40 h-40">
+                            <svg className="w-full h-full" viewBox="0 0 100 100">
+                                <circle className="text-slate-100 stroke-current" strokeWidth="8" cx="50" cy="50" r="40" fill="transparent"></circle>
+                                <circle className="text-blue-600 stroke-current" strokeWidth="8" strokeLinecap="round" cx="50" cy="50" r="40" fill="transparent" strokeDasharray="251.2" strokeDashoffset={251.2 - (251.2 * prep.cvMatchScore) / 100}></circle>
+                            </svg>
+                            <div className="absolute top-0 left-0 w-full h-full flex flex-col items-center justify-center">
+                                <span className="text-4xl font-bold text-slate-900">{prep.cvMatchScore}</span>
+                                <span className="text-xs text-slate-500 uppercase font-bold">Uyum</span>
+                            </div>
+                        </div>
+                        <p className="mt-4 text-center max-w-md text-slate-600">
+                            CV'niz bu pozisyon için <strong>%{prep.cvMatchScore}</strong> oranında uygun bulundu.
+                        </p>
+                    </div>
+                </TabsContent>
+            </Tabs>
 
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-xl flex items-center gap-2">
-                                    <Users className="text-purple-600" />
-                                    Kilit İsimler
-                                </CardTitle>
-                                <CardDescription>Mülakatta karşılaşabileceğiniz veya referans verebileceğiniz isimler.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {prep.keyPeople?.map((person, i) => (
-                                        <div key={i} className="flex items-center gap-4 p-3 bg-white border rounded-lg shadow-sm hover:border-purple-200 transition-colors">
-                                            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-bold">
-                                                {person.name.charAt(0)}
-                                            </div>
-                                            <div>
-                                                <p className="font-semibold text-slate-800">{person.name}</p>
-                                                <p className="text-sm text-slate-500">{person.title}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {(!prep.keyPeople || prep.keyPeople.length === 0) && (
-                                        <p className="text-muted-foreground text-sm col-span-2">Kilit personel bilgisi bulunamadı.</p>
-                                    )}
+            {/* PRINTABLE HIDDEN COMPONENT */}
+            <div style={{ display: "none" }}>
+                <div ref={printRef} className="p-10 font-sans text-slate-900 max-w-[210mm] mx-auto">
+                    <div className="border-b pb-6 mb-6">
+                        <h1 className="text-3xl font-bold mb-2">{company.name} - Mülakat Hazırlık Raporu</h1>
+                        <p className="text-slate-500">Oluşturulma Tarihi: {new Date().toLocaleDateString('tr-TR')}</p>
+                    </div>
+
+                    <div className="mb-8 p-4 bg-slate-50 rounded border">
+                        <h2 className="text-lg font-bold mb-2 uppercase tracking-wider text-slate-700">Şirket Kültürü</h2>
+                        <p>{prep.companyCulture}</p>
+                    </div>
+
+                    <div className="mb-8">
+                        <h2 className="text-lg font-bold mb-4 uppercase tracking-wider text-slate-700 border-b pb-2">Mülakat Simülasyonu</h2>
+                        {prep.cvDeepDive?.map((item, i) => (
+                            <div key={i} className="mb-6 break-inside-avoid">
+                                <p className="font-bold text-slate-800 mb-1">Soru: {item.question}</p>
+                                <div className="pl-4 border-l-2 border-slate-300">
+                                    <p className="text-sm text-slate-600 italic mb-2">Trigger: {item.trigger}</p>
+                                    <p className="text-slate-700 bg-slate-50 p-2 rounded">Cevap İpucu: {item.starAnswer}</p>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-                </Tabs>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="mb-8">
+                        <h2 className="text-lg font-bold mb-4 uppercase tracking-wider text-slate-700 border-b pb-2">Yönetim Takımı</h2>
+                        <div className="grid grid-cols-2 gap-4">
+                            {prep.executiveTeam?.map((exec, i) => (
+                                <div key={i} className="border p-3 rounded">
+                                    <p className="font-bold">{exec.name}</p>
+                                    <p className="text-sm text-slate-500">{exec.title}</p>
+                                    {exec.predictedEmail && <p className="text-xs text-slate-400 mt-1">{exec.predictedEmail}</p>}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="mt-12 pt-6 border-t text-center text-xs text-slate-400">
+                        Bu rapor "LinkedIn Interview Prep AI" tarafından kişiye özel oluşturulmuştur.
+                    </div>
+                </div>
             </div>
         </div>
-    )
+    );
 }
