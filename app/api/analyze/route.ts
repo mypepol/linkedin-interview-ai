@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { scrapeLinkedInCompany } from '@/lib/apify';
-import { generateInterviewPrep } from '@/lib/openai';
+import { generateInterviewPrep } from '@/lib/anthropic';
 
 export const maxDuration = 60; // Set max duration for Vercel/Next.js (scraping can take time)
 
