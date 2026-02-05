@@ -15,10 +15,9 @@ export async function scrapeLinkedInCompany(url: string): Promise<CompanyData | 
     try {
         const client = getApifyClient();
 
-        // Using epctex/linkedin-company-scraper
-        // Input parameters typically require startUrls
+        // Input parameters for artificially/linkedin-company-scraper
         const runInput = {
-            startUrls: [{ url }],
+            companyUrls: [url],
             maxConcurrency: 1,
             minConcurrency: 1,
             maxRequestRetries: 2,
