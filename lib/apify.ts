@@ -27,7 +27,7 @@ export async function scrapeLinkedInCompany(url: string): Promise<CompanyData | 
         console.log("Starting Apify actor for URL:", url);
 
         // Run the actor and wait for it to finish
-        const run = await client.actor("epctex/linkedin-company-scraper").call(runInput);
+        const run = await client.actor("artificially/linkedin-company-scraper").call(runInput);
 
         console.log("Actor finished, fetching results from dataset:", run.defaultDatasetId);
 
