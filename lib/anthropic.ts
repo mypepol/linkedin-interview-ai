@@ -42,7 +42,7 @@ Uzmanlık Alanları: ${company.specialties.join(', ')}
 
     try {
         const msg = await anthropic.messages.create({
-            model: "claude-3-5-sonnet-20240620", // or "claude-3-opus-20240229"
+            model: "claude-3-5-sonnet-latest", // Updated to prevent 404 on date-specific versions
             max_tokens: 2000,
             temperature: 0.7,
             system: systemPrompt,
